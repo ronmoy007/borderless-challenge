@@ -1,6 +1,23 @@
 import json
 import websocket
 
+# Defining classes for custom exceptions
+class MissingFieldException(Exception):
+    def __init__(self, field):
+        super().__init__(f"Missing field: {field}")
+
+class MissingValueException(Exception):
+    def __init__(self, field):
+        super().__init__(f"Field '{field}' is None")
+
+class DuplicateTradeIDException(Exception):
+    def __init__(self, trade_id):
+        super().__init__(f"Trade ID {trade_id} already received")
+
+class InvalidJSONException(Exception):
+    def __init__(self, message):
+        super().__init__(f"Invalid JSON message: {message}")
+
 list_trade_id_received = set()
 
 def on_message(ws, message):
@@ -26,18 +43,20 @@ def on_message(ws, message):
         for field in list_valid_fields:
             if field not in trade_data:
                 print(f"Trade data missing field: {field}")
-                return
+                # Raise an exception or handle it as needed
+                raise MissingFieldException(field)
             
             # Second validation: Check if the field is not None
             if trade_data[field] is None:
                 print(f"Trade data field '{field}' is None:", trade_data)
-                return        
+                # Raise an exception or handle it as needed
+                raise MissingValueException(field)
         
         # Third validation: Check if the trade ID has already been received        
         trade_id = trade_data["t"]
         if trade_id in list_trade_id_received:
             print(f"Trade ID {trade_id} already received, skipping.")
-            return
+            raise DuplicateTradeIDException(trade_id)  # Raise an exception or handle it as needed            
 
         # If all validations pass, process the trade data
         print(f"New trade ID received: {trade_id}")
@@ -56,7 +75,7 @@ def on_message(ws, message):
             
     except json.JSONDecodeError:
         print("Error decoding JSON message:", message)
-        return
+        raise InvalidJSONException(message)
 
 def on_open(ws):
     print("Connection opened")
@@ -66,7 +85,7 @@ def on_close(ws, close_status_code, close_msg):
 
 def run_websocket(symbol):
     print(f"Starting WebSocket for symbol: {symbol}")
-    
+
     socket_url = f"wss://stream.binance.com:9443/ws/{symbol}@trade"
     ws = websocket.WebSocketApp(
         socket_url,
