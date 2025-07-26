@@ -1,7 +1,7 @@
 # Run the orchestrator
 run:
-	python producers_orchestrator.py
+	python producer/producers_orchestrator.py
 
 # Run unit tests
 test:
-	python -m unittest test_producer.py
+	python -m unittest discover -s producer -p "test_*.py"
