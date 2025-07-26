@@ -34,3 +34,15 @@ services:
       - ./producer:/app
     working_dir: /app
     command: python producers_orchestrator.py
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse_service
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./clickhouse:/docker-entrypoint-initdb.d
+    depends_on:
+      redpanda:
+        condition: service_healthy

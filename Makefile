@@ -8,3 +8,6 @@ test:
 
 compose:
 	docker-compose up --build
+
+query:
+	docker exec -it clickhouse_service clickhouse-client --query "SELECT * FROM kafka_physical ORDER BY trade_time DESC LIMIT 10;"
