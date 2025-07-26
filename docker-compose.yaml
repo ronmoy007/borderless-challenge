@@ -3,7 +3,7 @@ version: "3.9"
 services:
   redpanda:
     image: redpandadata/redpanda:latest
-    container_name: redpanda
+    container_name: redpanda_service
     command:
       - redpanda start
       - --overprovisioned
