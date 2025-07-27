@@ -1,5 +1,6 @@
 import threading # This library is used to run multiple WebSocket connections concurrently, because in my first approach It was blocking the main thread.
-from producer import run_websocket
+from producer_python import producer_python
+from producer_redpandas_connect import producer_redpanda_connect
 from pathlib import Path
 import sys
 
@@ -15,9 +16,15 @@ def main(redpanda_connect):
     except FileNotFoundError:
         print("symbols.txt not found.")
     
+    if redpanda_connect:
+        producer_function = producer_redpanda_connect
+    else:
+        producer_function = producer_python
+    
     threads = []
     for symbol in list_symbols:
-        t = threading.Thread(target=run_websocket, args=(symbol,redpanda_connect))
+        
+        t = threading.Thread(target=producer_function, args=(symbol,))
         t.start()
         threads.append(t)
 

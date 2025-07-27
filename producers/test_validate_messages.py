@@ -1,11 +1,17 @@
 import unittest
 from unittest.mock import Mock
 import json
-import producer
+from pre_process_message import (
+    PreProcessMessage,
+    MissingFieldException,
+    MissingValueException,
+    DuplicateTradeIDException,
+    InvalidJSONException,
+)
 
-class TestOnMessage(unittest.TestCase):
+class TestPreProcessMessage(unittest.TestCase):
     def setUp(self):
-        producer.list_trade_id_received.clear()
+        self.processor = PreProcessMessage()
 
     def test_valid_message(self):
         ws = Mock()
@@ -22,10 +28,9 @@ class TestOnMessage(unittest.TestCase):
         }
         message = json.dumps(trade_data)
         # Should not raise
-        producer.pre_process_message(ws, message)
-
+        result = self.processor.pre_process_message(ws, message)
         # Ensure trade ID IS added (happy path)
-        self.assertIn(12345, producer.list_trade_id_received)
+        self.assertEqual(result["trade_id"], 12345)
 
     def test_missing_field(self):
         ws = Mock()
@@ -41,11 +46,11 @@ class TestOnMessage(unittest.TestCase):
             "M": True
         }
         message = json.dumps(trade_data)
-        with self.assertRaises(producer.MissingFieldException):
-            producer.pre_process_message(ws, message)
+        with self.assertRaises(MissingFieldException):
+            self.processor.pre_process_message(ws, message)
 
         # Ensure no trade ID was added
-        self.assertNotIn(12346, producer.list_trade_id_received)
+        self.assertEqual(self.processor.list_trade_id_received, set())
 
     def test_missing_value(self):
         ws = Mock()
@@ -61,11 +66,11 @@ class TestOnMessage(unittest.TestCase):
             "M": True
         }
         message = json.dumps(trade_data)
-        with self.assertRaises(producer.MissingValueException):
-            producer.pre_process_message(ws, message)
-        
+        with self.assertRaises(MissingValueException):
+            self.processor.pre_process_message(ws, message)
+
         # Ensure no trade ID was added
-        self.assertNotIn(12347, producer.list_trade_id_received)
+        self.assertEqual(self.processor.list_trade_id_received, set())
 
     def test_duplicate_trade_id(self):
         ws = Mock()
@@ -81,20 +86,18 @@ class TestOnMessage(unittest.TestCase):
             "M": True
         }
         message = json.dumps(trade_data)
-        producer.pre_process_message(ws, message) # First time trade data is valid and added
-        with self.assertRaises(producer.DuplicateTradeIDException):
-            producer.pre_process_message(ws, message) # Second time should raise exception due to duplicate ID 
-        
-        # Ensure no trade ID was added
-        self.assertIn(12348, producer.list_trade_id_received)
+        self.processor.pre_process_message(None, message) # First time trade data is valid and added
+        with self.assertRaises(DuplicateTradeIDException):
+            self.processor.pre_process_message(None, message) # Second time should raise exception due to duplicate ID
 
     def test_invalid_json(self):
         ws = Mock()
         message = "{invalid_json"
-        with self.assertRaises(producer.InvalidJSONException):
-            producer.pre_process_message(ws, message)
+        with self.assertRaises(InvalidJSONException):
+            self.processor.pre_process_message(ws, message)
         
-        self.assertEqual(len(producer.list_trade_id_received), 0)
+        # Ensure no trade ID was added
+        self.assertEqual(self.processor.list_trade_id_received, set())
 
 if __name__ == "__main__":
     unittest.main()

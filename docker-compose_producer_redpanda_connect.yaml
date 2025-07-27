@@ -22,16 +22,16 @@ services:
       timeout: 2s
       retries: 10
 
-  producer:
+  producers:
     build:
-      context: ./producer
+      context: ./producers
       dockerfile: ./Dockerfile
-    container_name: producer_container
+    container_name: producers_container
     depends_on:
       redpanda:
         condition: service_healthy
     volumes:
-      - ./producer:/app
+      - ./producers:/app
     working_dir: /app
     command: ["--redpanda-connect"]
 
