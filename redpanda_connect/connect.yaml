@@ -1,0 +1,20 @@
+# connect.yaml
+input:
+  label: http_input
+  http_server:
+    address: "0.0.0.0:8080"
+    path: "/"
+    timeout: 5s
+
+pipeline:
+  processors:
+    - bloblang: |
+        root = this
+
+output:
+  kafka:
+    addresses: [ "redpanda:9092" ]
+    topic: "borderless_challenge"
+    client_id: "http_forwarder"
+    tls:
+      enabled: false
