@@ -1,5 +1,6 @@
 import json
 import websocket
+import requests
 from confluent_kafka import Producer
 
 # Defining classes for custom exceptions
@@ -22,8 +23,9 @@ class InvalidJSONException(Exception):
 # Redpanda configuration
 REDPANDA_TOPIC = "borderless_challenge"
 REDPANDA_BROKER = "redpanda:9092"
+REDPANDA_CONNECT_URL = "http://redpanda_connect:8080/"
 
-redpanda_producer = Producer({'bootstrap.servers': REDPANDA_BROKER})
+msg_producer = Producer({'bootstrap.servers': REDPANDA_BROKER})
 
 list_trade_id_received = set()
 
@@ -35,7 +37,7 @@ def redpanda_response(err, msg):
     # Mmmm not sure what to do with the response, maybe log errors to a file or something?
     # Anyway, for now just print the response to show that communication with Redpanda is working
 
-def on_message(ws, message):
+def pre_process_message(ws, message):
     print(f"Received: {message}")
     try:
         trade_data = json.loads(message)
@@ -84,43 +86,73 @@ def on_message(ws, message):
             "trade_time": trade_data["T"],
             "is_market_maker": trade_data["m"],
             "ignore": trade_data["M"] # Not sure what this field is for, but included for completeness
-        }        
+        }
 
-        # Now I can produce the message to Redpanda
-        redpanda_producer.produce(
-            topic=REDPANDA_TOPIC,
-            key=str(trade_id),
-            value=json.dumps(json_redpanda),
-            callback=redpanda_response
-        )
-        redpanda_producer.poll(0)
-        list_trade_id_received.add(trade_id)
+        # Add the trade ID to the set of received IDs
+        list_trade_id_received.add(json_redpanda["trade_id"])
+        
+        return json_redpanda
             
     except json.JSONDecodeError:
         print("Error decoding JSON message:", message)
         raise InvalidJSONException(message)
 
+def producer_python(ws, message):
+    
+    json_redpanda = pre_process_message(ws, message)
+    msg_producer.produce(
+        topic=REDPANDA_TOPIC,
+        key=str(json_redpanda["trade_id"]),
+        value=json.dumps(json_redpanda),
+        callback=redpanda_response
+    )    
+    
+    msg_producer.poll(0)
+
+def producer_redpanda_connect(ws, message):
+    json_redpanda = pre_process_message(ws, message)
+
+    # make post request to Redpanda connect
+    headers = {'Content-Type': 'application/vnd.kafka.json.v2+json'} 
+    response = requests.post(REDPANDA_CONNECT_URL, headers=headers, json=json_redpanda)
+
+    if response.status_code == 200:
+        print(f"Message sent to Redpanda Connect: {json_redpanda}")
+    else:
+        print(f"Failed to send message to Redpanda Connect: {response.status_code} - {response.text}")
+
 def on_open(ws):
     print("Connection opened")
 
-def on_close(ws, close_status_code, close_msg):
+def on_close_producer_python(ws, close_status_code, close_msg):
     print("Connection closed with code:", close_status_code, "and message:", close_msg)
-    redpanda_producer.flush()
+    msg_producer.flush()
 
-def run_websocket(symbol):
-    print(f"Starting WebSocket for symbol: {symbol}")
+def on_close_producer_redpanda_connect(ws, close_status_code, close_msg):
+    print("Connection closed with code:", close_status_code, "and message:", close_msg)
+
+def run_websocket(symbol, redpanda_connect=False):
+    print(f"Starting WebSocket for symbol: {symbol}, redpanda_connect={redpanda_connect}")
+
+    if redpanda_connect:
+        on_message_function = producer_redpanda_connect
+        on_close_function = on_close_producer_redpanda_connect
+    else:
+        on_message_function = producer_python
+        on_close_function = on_close_producer_python
 
     try:
         socket_url = f"wss://stream.binance.com:9443/ws/{symbol}@trade"
         ws = websocket.WebSocketApp(
             socket_url,
             on_open=on_open,
-            on_message=on_message,
-            on_close=on_close
+            on_message=on_message_function,
+            on_close=on_close_function
         )
         ws.run_forever()
     except Exception as e:
         print(f"An error occurred while running WebSocket for {symbol}: {e}")
     finally:        
         # If an error occurs, flush the Redpanda producer to ensure all messages are sent
-        redpanda_producer.flush()
+        if not redpanda_connect:
+            msg_producer.flush()

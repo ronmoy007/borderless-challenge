@@ -33,7 +33,6 @@ services:
     volumes:
       - ./producer:/app
     working_dir: /app
-    command: python producers_orchestrator.py
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest

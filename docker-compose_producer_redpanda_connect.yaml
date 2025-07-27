@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: redpanda_service
+    command:
+      - redpanda start
+      - --overprovisioned
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --node-id 0
+      - --check=false
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:9092
+    ports:
+      - "9092:9092"     # Kafka API
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9644/v1/status/ready"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+  producer:
+    build:
+      context: ./producer
+      dockerfile: ./Dockerfile
+    container_name: producer_service
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    volumes:
+      - ./producer:/app
+    working_dir: /app
+    command: ["--redpanda-connect"]
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: clickhouse_service
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - ./clickhouse:/docker-entrypoint-initdb.d
+    depends_on:
+      redpanda:
+        condition: service_healthy
+
+  redpanda_connect:
+    image: jeffail/benthos:latest
+    container_name: redpanda_connect_service
+    volumes:
+      - ./redpanda_connect/connect.yaml:/benthos.yaml
+    command: ["-c", "/benthos.yaml"]
+    ports:
+      - "8080:8080"
+    depends_on:
+      redpanda:
+        condition: service_healthy

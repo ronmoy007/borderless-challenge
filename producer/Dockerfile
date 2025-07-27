@@ -12,4 +12,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["python", "producers_orchestrator.py"]
+ENTRYPOINT ["python", "producers_orchestrator.py"]

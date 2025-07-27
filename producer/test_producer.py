@@ -22,7 +22,7 @@ class TestOnMessage(unittest.TestCase):
         }
         message = json.dumps(trade_data)
         # Should not raise
-        producer.on_message(ws, message)
+        producer.pre_process_message(ws, message)
 
         # Ensure trade ID IS added (happy path)
         self.assertIn(12345, producer.list_trade_id_received)
@@ -42,7 +42,7 @@ class TestOnMessage(unittest.TestCase):
         }
         message = json.dumps(trade_data)
         with self.assertRaises(producer.MissingFieldException):
-            producer.on_message(ws, message)
+            producer.pre_process_message(ws, message)
 
         # Ensure no trade ID was added
         self.assertNotIn(12346, producer.list_trade_id_received)
@@ -62,7 +62,7 @@ class TestOnMessage(unittest.TestCase):
         }
         message = json.dumps(trade_data)
         with self.assertRaises(producer.MissingValueException):
-            producer.on_message(ws, message)
+            producer.pre_process_message(ws, message)
         
         # Ensure no trade ID was added
         self.assertNotIn(12347, producer.list_trade_id_received)
@@ -81,9 +81,9 @@ class TestOnMessage(unittest.TestCase):
             "M": True
         }
         message = json.dumps(trade_data)
-        producer.on_message(ws, message) # First time trade data is valid and added
+        producer.pre_process_message(ws, message) # First time trade data is valid and added
         with self.assertRaises(producer.DuplicateTradeIDException):
-            producer.on_message(ws, message) # Second time should raise exception due to duplicate ID 
+            producer.pre_process_message(ws, message) # Second time should raise exception due to duplicate ID 
         
         # Ensure no trade ID was added
         self.assertIn(12348, producer.list_trade_id_received)
@@ -92,7 +92,7 @@ class TestOnMessage(unittest.TestCase):
         ws = Mock()
         message = "{invalid_json"
         with self.assertRaises(producer.InvalidJSONException):
-            producer.on_message(ws, message)
+            producer.pre_process_message(ws, message)
         
         self.assertEqual(len(producer.list_trade_id_received), 0)
 
