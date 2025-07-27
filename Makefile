@@ -1,10 +1,11 @@
+# First 2 options are only fur development purposes, they run the orchestrator without Redpanda and ClickHouse.
 # Run only orchestrator using Python Producer (redpanda and ClickHouse not running)
-run-producer-python:	
-	python producers/producers_orchestrator.py
+# run-producer-python:	
+# 	python producers/producers_orchestrator.py
 
 # Run the orchestrator using Redpanda Connect (redpanda and ClickHouse not running)
-run-producer-redpanda-connect:
-	python producers/producers_orchestrator.py --redpanda-connect
+# run-producer-redpanda-connect:
+# 	python producers/producers_orchestrator.py --redpanda-connect
 
 # Run unit tests
 unit-test:
@@ -64,3 +65,6 @@ query-for-duplicates:  # This query should return 0, because the producer is des
 		GROUP BY symbol, trade_id \
 		HAVING count > 1 \
 		;"
+
+enter-clickhouse-container-for-querying:
+	docker exec -it clickhouse_container clickhouse-client
