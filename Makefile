@@ -20,4 +20,4 @@ compose-producer-redpanda-connect:
 
 # Once all containers are running, its possible to query ClickHouse for the latest data
 query:
-	docker exec -it clickhouse_service clickhouse-client --query "SELECT * FROM kafka_physical ORDER BY trade_time DESC LIMIT 10;"
+	docker exec -it clickhouse_container clickhouse-client --query "SELECT * FROM kafka_physical ORDER BY trade_time DESC LIMIT 10;"

@@ -3,7 +3,7 @@ version: "3.9"
 services:
   redpanda:
     image: redpandadata/redpanda:latest
-    container_name: redpanda_service
+    container_name: redpanda_container
     command:
       - redpanda start
       - --overprovisioned
@@ -26,7 +26,7 @@ services:
     build:
       context: ./producer
       dockerfile: ./Dockerfile
-    container_name: producer_service
+    container_name: producer_container
     depends_on:
       redpanda:
         condition: service_healthy
@@ -36,7 +36,7 @@ services:
 
   clickhouse:
     image: clickhouse/clickhouse-server:latest
-    container_name: clickhouse_service
+    container_name: clickhouse_container
     ports:
       - "8123:8123"
       - "9000:9000"
