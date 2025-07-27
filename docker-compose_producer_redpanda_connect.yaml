@@ -51,7 +51,7 @@ services:
     image: jeffail/benthos:latest
     container_name: redpanda_connect_container
     volumes:
-      - ./redpanda_connect/connect.yaml:/benthos.yaml
+      - ./producers/redpanda_connect/connect.yaml:/benthos.yaml
     command: ["-c", "/benthos.yaml"]
     ports:
       - "8080:8080"
